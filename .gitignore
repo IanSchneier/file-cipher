@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Dev Enviroment folders
+build/*
+.devcontainer/*
