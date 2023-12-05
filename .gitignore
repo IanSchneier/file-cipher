@@ -33,4 +33,5 @@
 
 # Dev Enviroment folders
 build/*
+.vscode/*
 .devcontainer/*
