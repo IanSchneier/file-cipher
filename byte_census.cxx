@@ -5,7 +5,21 @@ module;
 #include <cstdint>
 #include <string>
 #include <iostream>
+#include <vector>
 
+template<typename T>
+// Allow any c-style array where element type is convertible to uint8_t
+concept byte_arr = requires(T t, size_t idx) {
+    {t[idx]} -> std::convertible_to<uint8_t>;
+};
+
+template<typename T>
+// Allow any container with a size attribute and same properties as byte_arr
+concept byte_container = byte_arr<T> && requires(T t) {
+    {t.size()} -> std::same_as<size_t>;
+};
+
+// Number of ASCII characters
 #define NUM_CHARS 256
 
 export module byte_census;
@@ -17,19 +31,37 @@ private:
     std::array<uint64_t, NUM_CHARS> m_arr;
     std::size_t m_cnt;
 public:
-    ByteCensus(std::string &str) : m_arr({0}), m_cnt(str.size()) {
-        for (const uint8_t &c : str) {
-            ++m_arr[c];
-        }
+    ByteCensus() : m_arr({0}), m_cnt(0) {}
+
+    ByteCensus(byte_container auto val) : ByteCensus() {
+        digest(val);
     }
 
-    ByteCensus(std::string &&str) : m_arr({0}), m_cnt(str.size()) {
-        for (const uint8_t &c : str) {
-            ++m_arr[c];
-        }
+    ByteCensus(byte_arr auto val) : ByteCensus() {
+        digest(std::string(val));
     }
 
     ~ByteCensus() {}
+
+    void digest(byte_container auto v) {
+        digest(v.data(), v.size());
+    }
+
+    void digest(byte_arr auto v, size_t len) {
+        // Reject data (for now) if not empty
+        if (m_cnt) {
+            std::cout << "Byte Census already filled\n";
+            return;
+        }
+
+        size_t i = 0;
+        while (i < len) {
+            ++m_arr[v[i++]];
+        }
+
+        // Update count
+        m_cnt = i;
+    }
 
 
     bool embeds_into (const ByteCensus &rhs) {
@@ -63,9 +95,4 @@ public:
 
         return os;
     }
-
-    int operator<=>(const ByteCensus &rhs) {
-        return m_cnt - rhs.m_cnt;
-    }
-
 };
